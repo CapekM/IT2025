@@ -8,7 +8,7 @@ pygame.init()
 width = 1000
 height = 500
 screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("First Game")
+pygame.display.set_caption("Asteroid Game")
 
 # Settings
 distance = 10
@@ -22,8 +22,8 @@ space_shooter_rect = space_shooter_image.get_rect()
 space_shooter_rect.center = (width // 2, height // 2)
 
 meteor_image = pygame.image.load("SpaceShooterRedux/PNG/Meteors/meteorBrown_big1.png")
-meteor_image_rect = meteor_image.get_rect()
-meteor_image_rect.center = (50, height // 2)
+meteor_rect = meteor_image.get_rect()
+meteor_rect.center = (50, height // 2)
 
 # Load sound
 sound_laser1 = pygame.mixer.Sound("SpaceShooterRedux/Bonus/sfx_laser1.ogg")
@@ -61,9 +61,9 @@ while running:
         space_shooter_rect.x += distance
 
     # Collision
-    if space_shooter_rect.colliderect(meteor_image_rect):
-        meteor_image_rect.centerx = random.randint(0 + 16, width - 16)
-        meteor_image_rect.centery = random.randint(50 + 16, height - 16)
+    if space_shooter_rect.colliderect(meteor_rect):
+        meteor_rect.centerx = random.randint(0 + 16, width - 16)
+        meteor_rect.centery = random.randint(50 + 16, height - 16)
         score += 1
         sound_zap.play()
 
@@ -84,7 +84,7 @@ while running:
 
     # Add pictures
     screen.blit(space_shooter_image, space_shooter_rect)
-    screen.blit(meteor_image, meteor_image_rect)
+    screen.blit(meteor_image, meteor_rect)
     screen.blit(game_name_text, game_name_text_rect)
     screen.blit(score_text, score_text_rect)
 

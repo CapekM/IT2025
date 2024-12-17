@@ -35,7 +35,6 @@ game_name_text_rect = game_name_text.get_rect()
 game_name_text_rect.centerx = width // 2
 game_name_text_rect.top = 10
 
-
 running = True
 while running:
     # poll for events
@@ -60,7 +59,7 @@ while running:
 
     # RENDER YOUR GAME HERE
 
-    # Tvary
+    # Shapes
     # pygame.draw.rect(screen, "red", space_shooter_rect, 1)
     pygame.draw.line(screen, dark_yellow, (0, 50), (width, 50), 2)
 
