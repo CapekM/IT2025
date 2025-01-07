@@ -13,9 +13,12 @@ pygame.display.set_caption("Asteroid Game")
 
 # Settings
 distance = 10
-fps = 60
+FPS = 60
 clock = pygame.time.Clock()
 score = 0
+
+# Colors
+dark_yellow = pygame.Color("#938f0c")
 
 # Pictures
 background_image = pygame.image.load("SpaceShooterRedux/Backgrounds/darkPurple.png")
@@ -35,9 +38,8 @@ meteor_height = meteor_rect.size[1]
 sound_laser1 = pygame.mixer.Sound("SpaceShooterRedux/Bonus/sfx_laser1.ogg")
 sound_zap = pygame.mixer.Sound("SpaceShooterRedux/Bonus/sfx_zap.ogg")
 
-# Texty
+# Fonts
 my_font = pygame.font.Font("SpaceShooterRedux/Bonus/kenvector_future.ttf", 30)
-dark_yellow = pygame.Color("#938f0c")
 game_name_text = my_font.render("Asteroid Game", True, dark_yellow)
 game_name_text_rect = game_name_text.get_rect(midtop=(width // 2, 10))
 
@@ -88,6 +90,6 @@ while running:
     # flip() the display to put your work on screen
     pygame.display.flip()
 
-    clock.tick(60)
+    clock.tick(FPS)
 
 pygame.quit()
