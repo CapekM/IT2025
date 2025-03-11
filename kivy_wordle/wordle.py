@@ -38,7 +38,6 @@ class WordleLayout(BoxLayout):
         self.current_attempt = 0
 
         possible_characters = {letter for word in self.word_list for letter in word}
-        print(f"{len(possible_characters) = }, {possible_characters = }")
         self.input_box = LimitedTextInput(
             possible_characters, multiline=False, hint_text="Enter your guess (5 letters)"
         )
@@ -48,7 +47,7 @@ class WordleLayout(BoxLayout):
         self.submit_button.bind(on_press=self.check_guess)
         self.add_widget(self.submit_button)
 
-        self.result_label = Label(text="", size_hint_y=None, height=40, markup=True)
+        self.result_label = Label(text="", size_hint_y=None, height=140, markup=True)
         # https://kivy.org/doc/stable/api-kivy.core.text.markup.html
         self.add_widget(self.result_label)
 
@@ -66,18 +65,21 @@ class WordleLayout(BoxLayout):
         result = self.evaluate_guess(guess)
 
         if guess == self.secret_word:
-            self.result_label.text = f"Congratulations! You guessed the word: [b]{self.secret_word}[/b]"
+            self.result_label.text += f"\n\n[size=16]Congratulations! You guessed the word: [b]{self.secret_word}[/b][/size]"
             self.input_box.disabled = True
             return
 
         if self.current_attempt >= self.max_attempts:
-            self.result_label.text = f"You lost! The word was: [b]{self.secret_word}[/b]"
+            self.result_label.text += f"\n\n[size=16]You lost! The word was: [b]{self.secret_word}[/b][/size]"
             self.input_box.disabled = True
             return
 
         # Display result of the guess
-        self.result_label.text = f"Attempt {self.current_attempt}: {result}"
-        # TODO attempts history
+        print(f"{self.result_label.text = }")
+        if not self.result_label.text:
+            self.result_label.text += f"Attempt {self.current_attempt}: {result}"
+        else:
+            self.result_label.text += f"\nAttempt {self.current_attempt}: {result}"
 
     def evaluate_guess(self, guess: str) -> str:
         result = ""
