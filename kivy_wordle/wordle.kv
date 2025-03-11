@@ -1,0 +1,24 @@
+<WordleLayout>:
+    orientation: "vertical"
+
+    LimitedTextInput:
+        id: input_box
+        multiline: False
+        hint_text: "Enter your guess (5 letters)"
+
+    Button:
+        id: submit_button
+        text: "Submit Guess"
+        on_press: root.check_guess(self)
+
+    Label:
+        id: words_label
+        size_hint_y: None
+        height: 40
+        markup: True
+
+    Label:
+        id: result_label
+        size_hint_y: None
+        height: 140
+        markup: True

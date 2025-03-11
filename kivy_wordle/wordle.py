@@ -4,7 +4,6 @@ from typing import Final
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
@@ -16,9 +15,9 @@ YELLOW_COLOR: Final[str] = "fcc603"
 class LimitedTextInput(TextInput):
     max_length = 5
 
-    def __init__(self, possible_characters: set[str], **kwargs) -> None:
+    def __init__(self, possible_characters: set[str] = None, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.possible_characters: set[str] = possible_characters
+        self.possible_characters: set[str] = set() if possible_characters is None else possible_characters
 
     def insert_text(self, substring: str, from_undo=False) -> None:
         if len(self.text) >= self.max_length:
@@ -35,28 +34,20 @@ def _get_word_list() -> list[str]:
 
 class WordleLayout(BoxLayout):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs, orientation="vertical")
+        super().__init__(**kwargs)
         self.word_list: list[str] = _get_word_list()
         self.secret_word = random.choice(self.word_list)
         self.max_attempts = 5
         self.current_attempt = 0
 
+        self.input_box = self.ids.input_box
+        self.submit_button = self.ids.submit_button
+        self.words_label = self.ids.words_label
+        self.result_label = self.ids.result_label
+
         possible_characters = {letter for word in self.word_list for letter in word}
-        self.input_box = LimitedTextInput(
-            possible_characters, multiline=False, hint_text="Enter your guess (5 letters)"
-        )
-        self.add_widget(self.input_box)
-
-        self.submit_button = Button(text="Submit Guess")
-        self.submit_button.bind(on_press=self.check_guess)
-        self.add_widget(self.submit_button)
-        words_text = "  ".join(sorted(possible_characters))
-        self.words_label = Label(text=words_text, size_hint_y=None, height=40, markup=True)
-        self.add_widget(self.words_label)
-
-        self.result_label = Label(text="", size_hint_y=None, height=140, markup=True)
-        # https://kivy.org/doc/stable/api-kivy.core.text.markup.html
-        self.add_widget(self.result_label)
+        self.input_box.possible_characters = possible_characters
+        self.words_label.text = "  ".join(sorted(possible_characters))
 
     def check_guess(self, instance) -> None:
         guess = self.input_box.text.lower()
@@ -71,21 +62,22 @@ class WordleLayout(BoxLayout):
         self.current_attempt += 1
         result = self.evaluate_guess(guess)
 
-        if guess == self.secret_word:
-            self.result_label.text += f"\n\n[size=16]Congratulations! You guessed the word: [b]{self.secret_word}[/b][/size]"
-            self.input_box.disabled = True
-            return
-
-        if self.current_attempt >= self.max_attempts:
-            self.result_label.text += f"\n\n[size=16]You lost! The word was: [b]{self.secret_word}[/b][/size]"
-            self.input_box.disabled = True
-            return
-
         # Display result of the guess
         if not self.result_label.text:
             self.result_label.text += f"Attempt {self.current_attempt}: {result}"
         else:
             self.result_label.text += f"\nAttempt {self.current_attempt}: {result}"
+
+        if guess == self.secret_word:
+            self.result_label.text += f"\n\n[size=20]Congratulations! You guessed the word: [b]{self.secret_word}[/b][/size]"
+            self.input_box.disabled = True
+            return
+
+        if self.current_attempt >= self.max_attempts:
+            self.result_label.text += f"\n\n[size=20]You lost! The word was: [b]{self.secret_word}[/b][/size]"
+            self.input_box.disabled = True
+            return
+
 
     def color_letter(self, letter: str, color: str) -> None:
         if color == GREEN_COLOR and f"{YELLOW_COLOR}]{letter}" in self.words_label.text:
