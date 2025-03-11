@@ -1,5 +1,6 @@
 import random
 from pathlib import Path
+from typing import Final
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -7,6 +8,9 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
+
+GREEN_COLOR: Final[str] = "03fc1c"
+YELLOW_COLOR: Final[str] = "fcc603"
 
 
 class LimitedTextInput(TextInput):
@@ -46,6 +50,9 @@ class WordleLayout(BoxLayout):
         self.submit_button = Button(text="Submit Guess")
         self.submit_button.bind(on_press=self.check_guess)
         self.add_widget(self.submit_button)
+        words_text = "  ".join(sorted(possible_characters))
+        self.words_label = Label(text=words_text, size_hint_y=None, height=40, markup=True)
+        self.add_widget(self.words_label)
 
         self.result_label = Label(text="", size_hint_y=None, height=140, markup=True)
         # https://kivy.org/doc/stable/api-kivy.core.text.markup.html
@@ -75,21 +82,41 @@ class WordleLayout(BoxLayout):
             return
 
         # Display result of the guess
-        print(f"{self.result_label.text = }")
         if not self.result_label.text:
             self.result_label.text += f"Attempt {self.current_attempt}: {result}"
         else:
             self.result_label.text += f"\nAttempt {self.current_attempt}: {result}"
 
+    def color_letter(self, letter: str, color: str) -> None:
+        if color == GREEN_COLOR and f"{YELLOW_COLOR}]{letter}" in self.words_label.text:
+            self.words_label.text = self.words_label.text.replace(f"{YELLOW_COLOR}]{letter}", f"{color}]{letter}")
+            return
+
+        if f"{letter}  " not in self.words_label.text and f"  {letter}" not in self.words_label.text:
+            return
+
+        text = self.words_label.text
+        index = max(text.index(f"{letter}  "), text.index(f"  {letter}"))
+        self.words_label.text = text[:index] + f"[color=#{color}]{letter}[/color]" + text[index + 1:]
+
+    def remove_letter(self, letter: str) -> None:
+        self.words_label.text = self.words_label.text.replace(f"{letter}  ", "").replace(f"  {letter}", "")
+
     def evaluate_guess(self, guess: str) -> str:
         result = ""
         for i, letter in enumerate(guess):
             if letter == self.secret_word[i]:
-                result += f"[color=#03fc1c]{letter}[/color]"  # Correct letter in correct position
+                color = GREEN_COLOR
+                result += f"[color=#{color}]{letter}[/color]"  # Correct letter in correct position
+                self.color_letter(letter, color)
             elif letter in self.secret_word:
-                result += f"[color=#fcc603]{letter}[/color]"  # Correct letter in wrong position
+                color = YELLOW_COLOR
+                result += f"[color=#{color}]{letter}[/color]"  # Correct letter in wrong position
+                self.color_letter(letter, color)
             else:
                 result += f"[color=#fc0303]{letter}[/color]"  # Incorrect letter
+                self.remove_letter(letter)
+
         return f"[b]{result}[/b]"
 
     def show_popup(self, title: str, message: str) -> None:
