@@ -12,28 +12,36 @@ from kivy.uix.textinput import TextInput
 class LimitedTextInput(TextInput):
     max_length = 5
 
-    def insert_text(self, substring, from_undo=False):
+    def __init__(self, possible_characters: set[str], **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.possible_characters: set[str] = possible_characters
+
+    def insert_text(self, substring: str, from_undo=False) -> None:
         if len(self.text) >= self.max_length:
+            return
+        if substring not in self.possible_characters:
             return
         TextInput.insert_text(self, substring, from_undo)
 
 
 def _get_word_list() -> list[str]:
     words_file_path = Path(__file__).parent / "cz_words_5.txt"
-    return [x.lower() for x in words_file_path.read_text().strip().splitlines()]
+    return [x.lower() for x in words_file_path.read_text(encoding='utf-8').strip().splitlines()]
 
 
 class WordleLayout(BoxLayout):
     def __init__(self, **kwargs):
-        super(WordleLayout, self).__init__(**kwargs, orientation="vertical")
+        super().__init__(**kwargs, orientation="vertical")
         self.word_list: list[str] = _get_word_list()
         self.secret_word = random.choice(self.word_list)
-        print(self.word_list[:100])
-        print(self.secret_word)
         self.max_attempts = 5
         self.current_attempt = 0
 
-        self.input_box = LimitedTextInput(multiline=False, hint_text="Enter your guess (5 letters)")
+        possible_characters = {letter for word in self.word_list for letter in word}
+        print(f"{len(possible_characters) = }, {possible_characters = }")
+        self.input_box = LimitedTextInput(
+            possible_characters, multiline=False, hint_text="Enter your guess (5 letters)"
+        )
         self.add_widget(self.input_box)
 
         self.submit_button = Button(text="Submit Guess")
