@@ -4,53 +4,76 @@ from typing import Final
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.textinput import TextInput
 
 GREEN_COLOR: Final[str] = "03fc1c"
 YELLOW_COLOR: Final[str] = "fcc603"
-
-
-class LimitedTextInput(TextInput):
-    max_length = 5
-
-    def __init__(self, possible_characters: set[str] = None, **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.possible_characters: set[str] = set() if possible_characters is None else possible_characters
-
-    def insert_text(self, substring: str, from_undo=False) -> None:
-        if len(self.text) >= self.max_length:
-            return
-        if substring not in self.possible_characters:
-            return
-        TextInput.insert_text(self, substring, from_undo)
+BLACK_COLOR: Final[str] = "000000"
 
 
 def _get_word_list() -> list[str]:
     words_file_path = Path(__file__).parent / "cz_words_5.txt"
-    return [x.lower() for x in words_file_path.read_text(encoding='utf-8').strip().splitlines()]
+    return [x.upper() for x in words_file_path.read_text(encoding='utf-8').strip().splitlines()]
 
+
+class KeyboardButton(Button):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.background_color = "FFFFFF"
 
 class WordleLayout(BoxLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.word_list: list[str] = _get_word_list()
         self.secret_word = random.choice(self.word_list)
+        self.words_len = 5
         self.max_attempts = 5
         self.current_attempt = 0
 
         self.result_label = self.ids.result_label
         self.words_label = self.ids.words_label
         self.submit_button = self.ids.submit_button
-        self.input_box = self.ids.input_box
+        self.keyboard_layout = self.ids.keyboard_layout
 
-        possible_characters = {letter for word in self.word_list for letter in word}
-        self.input_box.possible_characters = possible_characters
-        self.words_label.text = "  ".join(sorted(possible_characters))
+        self.words_label.text = "LÁSKA"  # TODO delete, it is for debugging purposes
+
+        keyboard_layout = [
+            ['Ú/Ů', 'Č', 'Ě', 'Ř', 'Š', 'Ž'],
+            ['W', 'E/É', 'R', 'T/Ť', 'Y/Ý', 'U', 'I/Í', 'O/Ó', 'P'],
+            ['A/Á', 'S', 'D/Ď', 'F', 'G', 'H', 'J', 'K', 'L'],
+            ['Z', 'X', 'C', 'V', 'B', 'M', 'N/Ň', '<-'],
+        ]
+        for row in keyboard_layout:
+            keyboard_row_layout = BoxLayout()
+            for key in row:
+                button = KeyboardButton(text=key, on_press=self.on_key_press)
+                print(f"{button.text = } {button.pos = } {button.size = } {button.x = } {button.y = }")
+                keyboard_row_layout.add_widget(button)
+            for b in keyboard_row_layout.children:
+                # print(f"{dir(b) = }")
+                print(f"{b.text = } {b.pos = } {b.size = } {b.x = } {b.y = }")
+            print()
+            self.keyboard_layout.add_widget(keyboard_row_layout)
+
+    def on_key_press(self, button):
+        if button.text == '<-':
+            if len(self.words_label.text):
+                self.words_label.text = self.words_label.text[:-1]
+        elif len(self.words_label.text) < self.words_len:
+            if "/" in button.text:
+                if len(self.words_label.text) and self.words_label.text[-1] == button.text[0]:
+                    self.words_label.text = self.words_label.text[:-1] + button.text[-1]
+                else:
+                    self.words_label.text += button.text[0]
+            else:
+                self.words_label.text += button.text
 
     def check_guess(self, instance) -> None:
-        guess = self.input_box.text.lower()
+        guess = self.words_label.text
+        self.words_label.text = ''
+
         if len(guess) != 5:
             self.show_popup("Invalid Guess", "Please enter a 5-letter word.")
             return
@@ -70,34 +93,18 @@ class WordleLayout(BoxLayout):
 
         if guess == self.secret_word:
             self.result_label.text += f"\n\n[size=20]Congratulations! You guessed the word: [b]{self.secret_word}[/b][/size]"
-            self.input_box.disabled = True
             return
 
         if self.current_attempt >= self.max_attempts:
             self.result_label.text += f"\n\n[size=20]You lost! The word was: [b]{self.secret_word}[/b][/size]"
-            self.input_box.disabled = True
             return
 
     def color_letter(self, letter: str, color: str) -> None:
-        if color == GREEN_COLOR and f"{YELLOW_COLOR}]{letter}" in self.words_label.text:
-            self.words_label.text = self.words_label.text.replace(f"{YELLOW_COLOR}]{letter}", f"{color}]{letter}")
-            return
-
-        if f"{letter}  " not in self.words_label.text and f"  {letter}" not in self.words_label.text:
-            return
-
-        text = self.words_label.text
-        def get_index(pattern: str)-> int:
-            try:
-                return text.index(pattern)
-            except ValueError:
-                return 0
-
-        index = max(get_index(f"{letter}  "), get_index(f"  {letter}"))
-        self.words_label.text = text[:index] + f"[color=#{color}]{letter}[/color]" + text[index + 1:]
-
-    def remove_letter(self, letter: str) -> None:
-        self.words_label.text = self.words_label.text.replace(f"{letter}  ", "").replace(f"  {letter}", "")
+        for row_grid in self.keyboard_layout.children:
+            for btn in row_grid.children:
+                if letter in btn.text:
+                    btn.background_color = color
+                    return
 
     def evaluate_guess(self, guess: str) -> str:
         result = ""
@@ -105,14 +112,14 @@ class WordleLayout(BoxLayout):
             if letter == self.secret_word[i]:
                 color = GREEN_COLOR
                 result += f"[color=#{color}]{letter}[/color]"  # Correct letter in correct position
-                self.color_letter(letter, color)
             elif letter in self.secret_word:
                 color = YELLOW_COLOR
                 result += f"[color=#{color}]{letter}[/color]"  # Correct letter in wrong position
-                self.color_letter(letter, color)
             else:
+                color = BLACK_COLOR
                 result += f"[color=#fc0303]{letter}[/color]"  # Incorrect letter
-                self.remove_letter(letter)
+
+            self.color_letter(letter, color)
 
         return f"[b]{result}[/b]"
 

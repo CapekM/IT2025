@@ -2,20 +2,24 @@
     orientation: "vertical"
 
     Label:
+        size_hint_y: 0.3
         id: result_label
         markup: True
 
     Label:
+        size_hint_y: 0.15
         id: words_label
-        markup: True
 
     Button:
+        size_hint_y: 0.15
         id: submit_button
         text: "Submit Guess"
         on_press: root.check_guess(self)
 
-    LimitedTextInput:
-        id: input_box
-        multiline: False
-        hint_text: "Enter your guess (5 letters)"
-        on_text_validate: root.check_guess(self)
+    BoxLayout:
+        id: keyboard_layout
+        orientation: "vertical"
+        size_hint_y: 0.4
+
+        padding: 10
+        spacing: 5
