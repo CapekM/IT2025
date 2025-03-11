@@ -6,6 +6,15 @@ from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
 
 
+class LimitedTextInput(TextInput):
+    max_length = 5
+
+    def insert_text(self, substring, from_undo=False):
+        if len(self.text) >= self.max_length:
+            return
+        TextInput.insert_text(self, substring, from_undo)
+
+
 class WordleLayout(BoxLayout):
     def __init__(self, **kwargs):
         super(WordleLayout, self).__init__(**kwargs, orientation="vertical")
@@ -14,7 +23,7 @@ class WordleLayout(BoxLayout):
         self.max_attempts = 5
         self.current_attempt = 0
 
-        self.input_box = TextInput(multiline=False, hint_text="Enter your guess (5 letters)")  # TODO length 5
+        self.input_box = LimitedTextInput(multiline=False, hint_text="Enter your guess (5 letters)")
         self.add_widget(self.input_box)
 
         self.submit_button = Button(text="Submit Guess")
