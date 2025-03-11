@@ -1,3 +1,6 @@
+import random
+from pathlib import Path
+
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -15,11 +18,18 @@ class LimitedTextInput(TextInput):
         TextInput.insert_text(self, substring, from_undo)
 
 
+def _get_word_list() -> list[str]:
+    words_file_path = Path(__file__).parent / "cz_words_5.txt"
+    return [x.lower() for x in words_file_path.read_text().strip().splitlines()]
+
+
 class WordleLayout(BoxLayout):
     def __init__(self, **kwargs):
         super(WordleLayout, self).__init__(**kwargs, orientation="vertical")
-        self.word_list: list[str] = ["apple", "melon"]  # TODO better word list
-        self.secret_word = "peach"  # random.choice(self.word_list)
+        self.word_list: list[str] = _get_word_list()
+        self.secret_word = random.choice(self.word_list)
+        print(self.word_list[:100])
+        print(self.secret_word)
         self.max_attempts = 5
         self.current_attempt = 0
 
