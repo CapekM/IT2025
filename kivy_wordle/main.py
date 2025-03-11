@@ -40,10 +40,10 @@ class WordleLayout(BoxLayout):
         self.max_attempts = 5
         self.current_attempt = 0
 
-        self.input_box = self.ids.input_box
-        self.submit_button = self.ids.submit_button
-        self.words_label = self.ids.words_label
         self.result_label = self.ids.result_label
+        self.words_label = self.ids.words_label
+        self.submit_button = self.ids.submit_button
+        self.input_box = self.ids.input_box
 
         possible_characters = {letter for word in self.word_list for letter in word}
         self.input_box.possible_characters = possible_characters
@@ -78,7 +78,6 @@ class WordleLayout(BoxLayout):
             self.input_box.disabled = True
             return
 
-
     def color_letter(self, letter: str, color: str) -> None:
         if color == GREEN_COLOR and f"{YELLOW_COLOR}]{letter}" in self.words_label.text:
             self.words_label.text = self.words_label.text.replace(f"{YELLOW_COLOR}]{letter}", f"{color}]{letter}")
@@ -88,7 +87,13 @@ class WordleLayout(BoxLayout):
             return
 
         text = self.words_label.text
-        index = max(text.index(f"{letter}  "), text.index(f"  {letter}"))
+        def get_index(pattern: str)-> int:
+            try:
+                return text.index(pattern)
+            except ValueError:
+                return 0
+
+        index = max(get_index(f"{letter}  "), get_index(f"  {letter}"))
         self.words_label.text = text[:index] + f"[color=#{color}]{letter}[/color]" + text[index + 1:]
 
     def remove_letter(self, letter: str) -> None:
