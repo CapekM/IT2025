@@ -1,22 +1,72 @@
 import itertools
 import random
-from pathlib import Path
-from typing import Final
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
+from kivy.animation import Animation
+from kivy.uix.screenmanager import Screen, ScreenManager, SwapTransition
 
-GREEN_COLOR: Final[str] = "03fc1c"
-YELLOW_COLOR: Final[str] = "fcc603"
-BLACK_COLOR: Final[str] = "000000"
+from utils import GREEN_COLOR, YELLOW_COLOR, BLACK_COLOR, GamePages, get_similar_letter, get_word_list
 
 
-def _get_word_list() -> list[str]:
-    words_file_path = Path(__file__).parent / "cz_words_5.txt"
-    return [x.upper() for x in words_file_path.read_text(encoding="utf-8").strip().splitlines()]
+class MyScreenManager(ScreenManager):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def switch_to_page(self, page_name: GamePages) -> None:
+        self.current = page_name
+        if page_name == GamePages.GAME:
+            # Each screen has only one children, which is our Page class
+            self.current_screen.children[0].init()
+
+    def add_page(self, widget, page_name: GamePages, **kwargs):
+        screen = Screen(name=page_name)
+        screen.add_widget(widget)
+        super().add_widget(screen, **kwargs)
+
+
+class WelcomePage(BoxLayout):
+    def __init__(self, screen_manager: MyScreenManager, **kwargs):
+        super().__init__(**kwargs)
+        self.screen_manager = screen_manager
+
+    def switch_to_game_page(self, instance):
+        wordle_app.screen_manager.switch_to_page(GamePages.GAME)
+
+    def switch_to_settings_page(self, instance):
+        wordle_app.screen_manager.switch_to_page(GamePages.SETTINGS)
+
+
+class OverPage(BoxLayout):
+    def __init__(self, screen_manager: MyScreenManager, **kwargs):
+        super().__init__(**kwargs)
+        self.screen_manager = screen_manager
+        self.name_label = self.ids.name_label
+
+    def switch_to_over_page(self, won: bool, word: str, attempts: int):
+        if won:
+            self.name_label.text = f"Congratulations!\nYou guessed {word}.\nIt took you {attempts} attempts."
+        else:
+            self.name_label.text = f"You lost!\nThe word was {word}."
+        wordle_app.screen_manager.switch_to_page(GamePages.OVER)
+
+    def switch_to_welcome_page(self, instance):
+        wordle_app.screen_manager.switch_to_page(GamePages.WELCOME)
+
+    def switch_to_game_page(self, instance):
+        wordle_app.screen_manager.switch_to_page(GamePages.GAME)
+
+
+class SettingsPage(BoxLayout):
+    def __init__(self, screen_manager: MyScreenManager, **kwargs):
+        super().__init__(**kwargs)
+        self.screen_manager = screen_manager
+
+    def switch_to_welcome_page(self, instance):
+        wordle_app.screen_manager.switch_to_page(GamePages.WELCOME)
 
 
 class KeyboardButton(Button):
@@ -33,19 +83,11 @@ class KeyboardButton(Button):
         self.background_color = color
 
 
-def get_similar_letter(couple_letters: list[tuple[str, str]], letter: str) -> str | None:
-    for couple in couple_letters:
-        if letter == couple[0]:
-            return couple[1]
-        elif letter == couple[1]:
-            return couple[0]
-    return None
-
-
-class WordleLayout(BoxLayout):
-    def __init__(self, **kwargs):
+class GamePage(BoxLayout):
+    def __init__(self, screen_manager: MyScreenManager, **kwargs):
         super().__init__(**kwargs)
-        self.word_list: list[str] = _get_word_list()
+        self.screen_manager = screen_manager
+        self.word_list: list[str] = get_word_list()
         self.secret_word = random.choice(self.word_list)
         self.words_len = 5
         self.max_attempts = 5
@@ -55,8 +97,6 @@ class WordleLayout(BoxLayout):
         self.words_label = self.ids.words_label
         self.submit_button = self.ids.submit_button
         self.keyboard_layout = self.ids.keyboard_layout
-
-        self.words_label.text = "LASKA"  # TODO delete, it is for debugging purposes
 
         self.couple_letters: list[tuple[str, str]] = []
         keyboard_layout = [
@@ -74,6 +114,12 @@ class WordleLayout(BoxLayout):
                 button = KeyboardButton(text=key, on_press=self.on_key_press)
                 keyboard_row_layout.add_widget(button)
             self.keyboard_layout.add_widget(keyboard_row_layout)
+
+    def init(self):
+        self.secret_word = random.choice(self.word_list)
+        self.result_label.text = ""
+        self.words_label.text = "LASKA"  # TODO delete, it is for debugging purposes
+        self.current_attempt = 0
 
     def on_key_press(self, button):
         if button.text == "<-":
@@ -105,7 +151,7 @@ class WordleLayout(BoxLayout):
             self.show_popup("Invalid Word", "This word is not in the list.")
             return
 
-        self.words_label.text = ""
+        # self.words_label.text = ""
         self.current_attempt += 1
         result = self.evaluate_guess(guess)
 
@@ -119,11 +165,11 @@ class WordleLayout(BoxLayout):
             self.result_label.text += (
                 f"\n\n[size=20]Congratulations! You guessed the word: [b]{self.secret_word}[/b][/size]"
             )
-            return
+            wordle_app.over_page.switch_to_over_page(True, self.secret_word, self.current_attempt)
 
-        if self.current_attempt >= self.max_attempts:
+        elif self.current_attempt >= self.max_attempts:
             self.result_label.text += f"\n\n[size=20]You lost! The word was: [b]{self.secret_word}[/b][/size]"
-            return
+            wordle_app.over_page.switch_to_over_page(False, self.secret_word, self.current_attempt)
 
     def check_guess_in_words(self, guess: str) -> bool:
         couple_letters_flat = [l for couple in self.couple_letters for l in couple]
@@ -137,7 +183,6 @@ class WordleLayout(BoxLayout):
                         changed_guess += get_similar_letter(self.couple_letters, l)
                     else:
                         changed_guess += l
-                print(f"{combination_len = }, {changed_guess = }, {indices_to_change = }")
                 if changed_guess in self.word_list:
                     return True
 
@@ -177,8 +222,24 @@ class WordleLayout(BoxLayout):
 class WordleApp(App):
 
     def build(self):
-        return WordleLayout()
+        self.title = "Wordle"
+        self.screen_manager = MyScreenManager(transition=SwapTransition())
+
+        self.welcome_page = WelcomePage(self.screen_manager)
+        self.screen_manager.add_page(self.welcome_page, GamePages.WELCOME)
+
+        self.game_page = GamePage(self.screen_manager)
+        self.screen_manager.add_page(self.game_page, GamePages.GAME)
+
+        self.over_page = OverPage(self.screen_manager)
+        self.screen_manager.add_page(self.over_page, GamePages.OVER)
+
+        self.settings_page = SettingsPage(self.screen_manager)
+        self.screen_manager.add_page(self.settings_page, GamePages.SETTINGS)
+
+        return self.screen_manager
 
 
 if __name__ == "__main__":
-    WordleApp().run()
+    wordle_app = WordleApp()
+    wordle_app.run()
