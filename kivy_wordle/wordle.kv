@@ -5,7 +5,7 @@
         id: name_label
         size_hint_y: 0.3
         text: "Wordle"
-        font_size: 30
+        font_size: 50
 
     Button:
         size_hint_y: 0.15
@@ -29,15 +29,15 @@
 
     Button:
         size_hint_y: 0.15
-        id: settings_button
-        text: "Home"
-        on_press:root.switch_to_welcome_page(self)
-
-    Button:
-        size_hint_y: 0.15
         id: play_button
         text: "Play"
         on_press:root.switch_to_game_page(self)
+
+    Button:
+        size_hint_y: 0.15
+        id: home_button
+        text: "Home"
+        on_press:root.switch_to_welcome_page(self)
 
 <SettingsPage>:
     orientation: "vertical"
@@ -51,13 +51,14 @@
     Button:
         size_hint_y: 0.15
         id: play_button
-        text: "Sound"
+        text: "Sound ON"
+        on_press:root.switch_sound()
 
     Button:
         size_hint_y: 0.15
         id: settings_button
         text: "Home"
-        on_press:root.switch_to_welcome_page(self)
+        on_press:root.switch_to_welcome_page()
 
 
 <GamePage>:

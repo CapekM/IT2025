@@ -2,6 +2,7 @@ import itertools
 import random
 
 from kivy.app import App
+from kivy.core.audio.audio_sdl2 import SoundLoader, Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -18,9 +19,9 @@ class MyScreenManager(ScreenManager):
 
     def switch_to_page(self, page_name: GamePages) -> None:
         self.current = page_name
-        if page_name == GamePages.GAME:
+        if page_name in [GamePages.GAME, GamePages.WELCOME]:
             # Each screen has only one children, which is our Page class
-            self.current_screen.children[0].init()
+            self.current_screen.children[0].setup()
 
     def add_page(self, widget, page_name: GamePages, **kwargs):
         screen = Screen(name=page_name)
@@ -32,6 +33,25 @@ class WelcomePage(BoxLayout):
     def __init__(self, screen_manager: MyScreenManager, **kwargs):
         super().__init__(**kwargs)
         self.screen_manager = screen_manager
+
+        self.play_button = self.ids.play_button
+        self.settings_button = self.ids.settings_button
+        self.setup()
+
+    def setup(self):
+        Clock.schedule_once(self._check_size_once)
+
+    def _check_size_once(self, dt):
+        if self.size == [100, 100]:  # If still default size, wait another frame
+            Clock.schedule_once(self._check_size_once)
+        else:
+            y_to_go = self.play_button.y
+            self.play_button.y = 0
+            animation = Animation(background_color=[0, 0, 1, 1], duration=1.3, y=y_to_go)
+            animation.start(self.play_button)
+
+            animation = Animation(background_color=[0, 1, 0, 1], duration=2)
+            animation.start(self.settings_button)
 
     def switch_to_game_page(self, instance):
         wordle_app.screen_manager.switch_to_page(GamePages.GAME)
@@ -46,11 +66,24 @@ class OverPage(BoxLayout):
         self.screen_manager = screen_manager
         self.name_label = self.ids.name_label
 
+        self.sound_win = SoundLoader.load("assets/win_sound.wav")
+        self.sound_lose = SoundLoader.load("assets/loss_sound.wav")
+        self.sound_on = True
+
+    def switch_sound(self) -> bool:
+        self.sound_on = not self.sound_on
+        self.sound_win.volume = int(self.sound_on)
+        self.sound_lose.volume = int(self.sound_on)
+        return self.sound_on
+
     def switch_to_over_page(self, won: bool, word: str, attempts: int):
         if won:
             self.name_label.text = f"Congratulations!\nYou guessed {word}.\nIt took you {attempts} attempts."
+            self.sound_win.play()
         else:
             self.name_label.text = f"You lost!\nThe word was {word}."
+            self.sound_lose.play()
+
         wordle_app.screen_manager.switch_to_page(GamePages.OVER)
 
     def switch_to_welcome_page(self, instance):
@@ -65,7 +98,14 @@ class SettingsPage(BoxLayout):
         super().__init__(**kwargs)
         self.screen_manager = screen_manager
 
-    def switch_to_welcome_page(self, instance):
+    def switch_sound(self):
+        sound_on = wordle_app.over_page.switch_sound()
+        if sound_on:
+            self.ids.play_button.text = "Sound ON"
+        else:
+            self.ids.play_button.text = "Sound OFF"
+
+    def switch_to_welcome_page(self):
         wordle_app.screen_manager.switch_to_page(GamePages.WELCOME)
 
 
@@ -115,7 +155,7 @@ class GamePage(BoxLayout):
                 keyboard_row_layout.add_widget(button)
             self.keyboard_layout.add_widget(keyboard_row_layout)
 
-    def init(self):
+    def setup(self):
         self.secret_word = random.choice(self.word_list)
         self.result_label.text = ""
         self.words_label.text = "LASKA"  # TODO delete, it is for debugging purposes
