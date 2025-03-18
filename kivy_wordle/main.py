@@ -1,6 +1,7 @@
 import itertools
 import random
 
+from collections import defaultdict
 from kivy.app import App
 from kivy.core.audio.audio_sdl2 import SoundLoader, Clock
 from kivy.uix.boxlayout import BoxLayout
@@ -112,6 +113,9 @@ class SettingsPage(BoxLayout):
 class KeyboardButton(Button):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.setup()
+
+    def setup(self) -> None:
         self.background_color = "FFFFFF"
 
     def change_color(self, color: str) -> None:
@@ -155,11 +159,23 @@ class GamePage(BoxLayout):
                 keyboard_row_layout.add_widget(button)
             self.keyboard_layout.add_widget(keyboard_row_layout)
 
+        # Structures for hints
+        self.matching_letters: dict[str, list[int]] = {}
+        self.known_letters: dict[str, list[int]] = {}
+        self.banned_letters: list[str] = []
+
     def setup(self):
         self.secret_word = random.choice(self.word_list)
         self.result_label.text = ""
-        self.words_label.text = "LASKA"  # TODO delete, it is for debugging purposes
+        self.words_label.text = "LÁSKA"  # TODO delete, it is for debugging purposes
         self.current_attempt = 0
+        for row_grid in self.keyboard_layout.children:
+            btn: KeyboardButton
+            for btn in row_grid.children:
+                btn.setup()
+        self.matching_letters = defaultdict(list)
+        self.known_letters = defaultdict(list)
+        self.banned_letters = []
 
     def on_key_press(self, button):
         if button.text == "<-":
@@ -180,7 +196,58 @@ class GamePage(BoxLayout):
         ):
             self.words_label.text = self.words_label.text[:-1] + button.text[-1]
 
-    def check_guess(self, instance) -> None:
+    def _word_match(self, word: str) -> bool:
+        for letter, positions in self.matching_letters.items():
+            for position in positions:
+                if "/" in letter:
+                    if letter[0] != word[position] and letter[-1] != word[position]:
+                        return False
+                elif letter != word[position]:
+                    return False
+
+        for letter, positions in self.known_letters.items():
+            # Check letter is not on position it cannot be
+            for position in positions:
+                if "/" in letter:
+                    if letter[0] == word[position] or letter[-1] == word[position]:
+                        return False
+                elif letter == word[position]:
+                    return False
+
+            # Check letter is in word
+            if "/" in letter:
+                if letter[0] not in word[position] or letter[-1] not in word[position]:
+                    return False
+            elif letter not in word:
+                return False
+
+
+
+        for letter in self.banned_letters:
+            if "/" in letter:
+                if letter[0] in word or letter[-1] in word:
+                    return False
+            elif letter in word:
+                return False
+
+        return True
+
+    def _find_matching_candidate(self) -> list[str]:
+        """
+        Find mathing words. Shuffle and return 5 of them.
+        """
+        result = []
+        for word in self.word_list:
+            if self._word_match(word):
+                result.append(word)
+        random.shuffle(result)
+        return result[:5]
+
+    def show_hint(self) -> None:
+        candidates = self._find_matching_candidate()
+        self.show_popup("Hint", "\n".join(candidates))
+
+    def check_guess(self) -> None:
         guess = self.words_label.text
 
         if len(guess) != 5:
@@ -191,7 +258,7 @@ class GamePage(BoxLayout):
             self.show_popup("Invalid Word", "This word is not in the list.")
             return
 
-        # self.words_label.text = ""
+        self.words_label.text = ""
         self.current_attempt += 1
         result = self.evaluate_guess(guess)
 
@@ -243,12 +310,15 @@ class GamePage(BoxLayout):
             if letter == self.secret_word[i] or (similar_letter is not None and similar_letter == self.secret_word[i]):
                 color = GREEN_COLOR
                 result += f"[color=#{color}]{letter}[/color]"  # Correct letter in correct position
+                self.matching_letters[letter].append(i)
             elif letter in self.secret_word or (similar_letter is not None and similar_letter in self.secret_word[i]):
                 color = YELLOW_COLOR
                 result += f"[color=#{color}]{letter}[/color]"  # Correct letter in wrong position
+                self.known_letters[letter].append(i)
             else:
                 color = BLACK_COLOR
                 result += f"[color=#fc0303]{letter}[/color]"  # Incorrect letter
+                self.banned_letters.append(letter)
 
             self.color_letter(letter, color)
 

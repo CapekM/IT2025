@@ -73,11 +73,20 @@
         size_hint_y: 0.15
         id: words_label
 
-    Button:
+    BoxLayout:
+        orientation: "horizontal"
         size_hint_y: 0.15
-        id: submit_button
-        text: "Submit Guess"
-        on_press: root.check_guess(self)
+        Button:
+            size_hint_x: 0.4
+            id: hint_button
+            text: "Hint"
+            on_press: root.show_hint()
+
+        Button:
+            size_hint_x: 0.6
+            id: submit_button
+            text: "Submit Guess"
+            on_press: root.check_guess()
 
     BoxLayout:
         id: keyboard_layout
